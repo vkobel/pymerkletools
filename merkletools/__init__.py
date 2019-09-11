@@ -10,7 +10,7 @@ class MerkleTools(object):
     def _to_hex(self, x):
         try:  # python3
             return x.hex()
-        except:  # python2
+        except AttributeError:  # python2
             return binascii.hexlify(x)
 
     def reset_tree(self):
@@ -18,15 +18,14 @@ class MerkleTools(object):
         self.levels = None
         self.is_ready = False
 
-    def add_leaf(self, values, do_hash=False):
+    def add_leaf(self, values):
         self.is_ready = False
         # check if single leaf
         if not isinstance(values, tuple) and not isinstance(values, list):
             values = [values]
         for v in values:
-            if do_hash:
-                v = v.encode('utf-8')
-                v = self.hash_function(v).hexdigest()
+            v = v.encode('utf-8')
+            v = self.hash_function(v).hexdigest()
             v = bytearray.fromhex(v)
             self.leaves.append(v)
 
@@ -48,7 +47,7 @@ class MerkleTools(object):
 
         new_level = []
         for l, r in zip(self.levels[0][0:N:2], self.levels[0][1:N:2]):
-            new_level.append(self.hash_function(l+r).digest())
+            new_level.append(self.hash_function(l + r).digest())
         if solo_leave is not None:
             new_level.append(solo_leave)
         self.levels = [new_level, ] + self.levels  # prepend new level
@@ -73,7 +72,7 @@ class MerkleTools(object):
     def get_proof(self, index):
         if self.levels is None:
             return None
-        elif not self.is_ready or index > len(self.leaves)-1 or index < 0:
+        elif not self.is_ready or index > len(self.leaves) - 1 or index < 0:
             return None
         else:
             proof = []
@@ -98,12 +97,7 @@ class MerkleTools(object):
         else:
             proof_hash = target_hash
             for p in proof:
-                try:
-                    # the sibling is a left node
-                    sibling = bytearray.fromhex(p['left'])
-                    proof_hash = self.hash_function(sibling + proof_hash).digest()
-                except:
-                    # the sibling is a right node
-                    sibling = bytearray.fromhex(p['right'])
-                    proof_hash = self.hash_function(proof_hash + sibling).digest()
+                sibling = p.get('left', p['right'])
+                sibling = bytearray.fromhex(sibling)
+                proof_hash = self.hash_function(proof_hash + sibling).digest()
             return proof_hash == merkle_root
