@@ -5,18 +5,17 @@ import binascii
 class MerkleTools(object):
     def __init__(self, hash_function=hashlib.sha256):
         self.hash_function = hash_function
-        self.reset_tree()
-
-    def _to_hex(self, x):
-        try:  # python3
-            return x.hex()
-        except AttributeError:  # python2
-            return binascii.hexlify(x)
-
-    def reset_tree(self):
         self.leaves = list()
         self.levels = None
         self.is_ready = False
+
+    def _to_hex(self, x):
+        try:
+            # python3
+            return x.hex()
+        except AttributeError:
+            # python2
+            return binascii.hexlify(x)
 
     def add_leaf(self, values):
         self.is_ready = False
@@ -24,9 +23,7 @@ class MerkleTools(object):
         if not isinstance(values, tuple) and not isinstance(values, list):
             values = [values]
         for v in values:
-            v = v.encode('utf-8')
-            v = self.hash_function(v).hexdigest()
-            v = bytearray.fromhex(v)
+            v = self.hash_function(v.encode('utf-8')).digest()
             self.leaves.append(v)
 
     def get_leaf(self, index):
@@ -34,9 +31,6 @@ class MerkleTools(object):
 
     def get_leaf_count(self):
         return len(self.leaves)
-
-    def get_tree_ready_state(self):
-        return self.is_ready
 
     def _calculate_next_level(self):
         solo_leave = None
@@ -50,12 +44,12 @@ class MerkleTools(object):
             new_level.append(self.hash_function(l + r).digest())
         if solo_leave is not None:
             new_level.append(solo_leave)
-        self.levels = [new_level, ] + self.levels  # prepend new level
+        self.levels = [new_level] + self.levels  # prepend new level
 
     def make_tree(self):
         self.is_ready = False
         if self.get_leaf_count() > 0:
-            self.levels = [self.leaves, ]
+            self.levels = [self.leaves]
             while len(self.levels[0]) > 1:
                 self._calculate_next_level()
         self.is_ready = True
@@ -83,7 +77,7 @@ class MerkleTools(object):
                     continue
                 is_right_node = index % 2
                 sibling_index = index - 1 if is_right_node else index + 1
-                sibling_pos = "left" if is_right_node else "right"
+                sibling_pos = 'l' if is_right_node else 'r'
                 sibling_value = self._to_hex(self.levels[x][sibling_index])
                 proof.append({sibling_pos: sibling_value})
                 index = int(index / 2.)
@@ -97,10 +91,10 @@ class MerkleTools(object):
         else:
             proof_hash = target_hash
             for p in proof:
-                if 'left' in p:
-                    sibling = bytearray.fromhex(p['left'])
+                if 'l' in p:
+                    sibling = bytearray.fromhex(p['l'])
                     proof_hash = self.hash_function(sibling + proof_hash).digest()
                 else:
-                    sibling = bytearray.fromhex(p['right'])
+                    sibling = bytearray.fromhex(p['r'])
                     proof_hash = self.hash_function(proof_hash + sibling).digest()
             return proof_hash == merkle_root
