@@ -97,7 +97,10 @@ class MerkleTools(object):
         else:
             proof_hash = target_hash
             for p in proof:
-                sibling = p.get('left', p['right'])
-                sibling = bytearray.fromhex(sibling)
-                proof_hash = self.hash_function(proof_hash + sibling).digest()
+                if 'left' in p:
+                    sibling = bytearray.fromhex(p['left'])
+                    proof_hash = self.hash_function(sibling + proof_hash).digest()
+                else:
+                    sibling = bytearray.fromhex(p['right'])
+                    proof_hash = self.hash_function(proof_hash + sibling).digest()
             return proof_hash == merkle_root
