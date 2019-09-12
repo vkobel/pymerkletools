@@ -1,21 +1,12 @@
 import hashlib
-import binascii
 
 
-class MerkleTools(object):
+class MerkleTools:
     def __init__(self, hash_function=hashlib.sha256):
         self.hash_function = hash_function
         self.leaves = list()
         self.levels = None
         self.is_ready = False
-
-    def _to_hex(self, x):
-        try:
-            # python3
-            return x.hex()
-        except AttributeError:
-            # python2
-            return binascii.hexlify(x)
 
     def add_leaf(self, values):
         self.is_ready = False
@@ -27,7 +18,7 @@ class MerkleTools(object):
             self.leaves.append(v)
 
     def get_leaf(self, index):
-        return self._to_hex(self.leaves[index])
+        return self.leaves[index].hex()
 
     def get_leaf_count(self):
         return len(self.leaves)
@@ -57,7 +48,7 @@ class MerkleTools(object):
     def get_merkle_root(self):
         if self.is_ready:
             if self.levels is not None:
-                return self._to_hex(self.levels[0][0])
+                return self.levels[0][0].hex()
             else:
                 return None
         else:
@@ -73,28 +64,29 @@ class MerkleTools(object):
             for x in range(len(self.levels) - 1, 0, -1):
                 level_len = len(self.levels[x])
                 if (index == level_len - 1) and (level_len % 2 == 1):  # skip if this is an odd end node
-                    index = int(index / 2.)
+                    index //= 2
                     continue
                 is_right_node = index % 2
                 sibling_index = index - 1 if is_right_node else index + 1
                 sibling_pos = 'l' if is_right_node else 'r'
-                sibling_value = self._to_hex(self.levels[x][sibling_index])
+                sibling_value = self.levels[x][sibling_index].hex()
                 proof.append({sibling_pos: sibling_value})
-                index = int(index / 2.)
+
+                index //= 2
             return proof
 
     def validate_proof(self, proof, target_hash, merkle_root):
-        merkle_root = bytearray.fromhex(merkle_root)
-        target_hash = bytearray.fromhex(target_hash)
+        merkle_root = bytes.fromhex(merkle_root)
+        target_hash = bytes.fromhex(target_hash)
         if len(proof) == 0:
             return target_hash == merkle_root
         else:
             proof_hash = target_hash
             for p in proof:
                 if 'l' in p:
-                    sibling = bytearray.fromhex(p['l'])
+                    sibling = bytes.fromhex(p['l'])
                     proof_hash = self.hash_function(sibling + proof_hash).digest()
                 else:
-                    sibling = bytearray.fromhex(p['r'])
+                    sibling = bytes.fromhex(p['r'])
                     proof_hash = self.hash_function(proof_hash + sibling).digest()
             return proof_hash == merkle_root

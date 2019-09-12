@@ -1,2 +1,0 @@
-include *.py *.txt
-recursive-include tests *.py *.md
