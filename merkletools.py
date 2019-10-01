@@ -14,7 +14,7 @@ class MerkleTools:
         if not isinstance(values, tuple) and not isinstance(values, list):
             values = [values]
         for v in values:
-            v = self.hash_function(v.encode('utf-8')).digest()
+            v = self.hash_function(b'\x00' + v.encode('utf-8')).digest()
             self.leaves.append(v)
 
     def get_leaf(self, index):
@@ -32,7 +32,7 @@ class MerkleTools:
 
         new_level = []
         for l, r in zip(self.levels[0][0:N:2], self.levels[0][1:N:2]):
-            new_level.append(self.hash_function(l + r).digest())
+            new_level.append(self.hash_function(b'\x01' + l + r).digest())
         if solo_leave is not None:
             new_level.append(solo_leave)
         self.levels = [new_level] + self.levels  # prepend new level
@@ -78,6 +78,7 @@ class MerkleTools:
     def validate_proof(self, proof, target_hash, merkle_root):
         merkle_root = bytes.fromhex(merkle_root)
         target_hash = bytes.fromhex(target_hash)
+
         if len(proof) == 0:
             return target_hash == merkle_root
         else:
@@ -85,8 +86,8 @@ class MerkleTools:
             for p in proof:
                 if 'l' in p:
                     sibling = bytes.fromhex(p['l'])
-                    proof_hash = self.hash_function(sibling + proof_hash).digest()
+                    proof_hash = self.hash_function(b'\x01' + sibling + proof_hash).digest()
                 else:
                     sibling = bytes.fromhex(p['r'])
-                    proof_hash = self.hash_function(proof_hash + sibling).digest()
+                    proof_hash = self.hash_function(b'\x01' + proof_hash + sibling).digest()
             return proof_hash == merkle_root
